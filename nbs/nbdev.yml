@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "PMPP"
+  site-url: "https://tripathysagar.github.io/PMPP"
+  description: "For learning of Programming Massively Parallel Processors (PMPP)"
+  repo-branch: main
+  repo-url: "https://github.com/tripathysagar/PMPP"
