@@ -5,4 +5,9 @@ d = { 'settings': { 'branch': 'main',
                 'doc_host': 'https://tripathysagar.github.io',
                 'git_url': 'https://github.com/tripathysagar/PMPP',
                 'lib_path': 'PMPP'},
-  'syms': {'PMPP.core': {'PMPP.core.foo': ('core.html#foo', 'PMPP/core.py')}}}
+  'syms': { 'PMPP.NumbaSimSetup': { 'PMPP.NumbaSimSetup.cuda_avail': ('numbasimsetup.html#cuda_avail', 'PMPP/NumbaSimSetup.py'),
+                                    'PMPP.NumbaSimSetup.device': ('numbasimsetup.html#device', 'PMPP/NumbaSimSetup.py'),
+                                    'PMPP.NumbaSimSetup.is_sim': ('numbasimsetup.html#is_sim', 'PMPP/NumbaSimSetup.py'),
+                                    'PMPP.NumbaSimSetup.set_sim': ('numbasimsetup.html#set_sim', 'PMPP/NumbaSimSetup.py'),
+                                    'PMPP.NumbaSimSetup.test_close': ('numbasimsetup.html#test_close', 'PMPP/NumbaSimSetup.py')},
+            'PMPP.core': {'PMPP.core.foo': ('core.html#foo', 'PMPP/core.py')}}}
