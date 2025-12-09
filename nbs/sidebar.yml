@@ -4,4 +4,4 @@ website:
       - index.ipynb
       - 00_NumbaSimSetup.ipynb
       - 01_ch1.ipynb
-      - 02_ch2.1.ipynb
+      - 02_ch2.ipynb
