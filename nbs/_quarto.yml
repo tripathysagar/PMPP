@@ -3,6 +3,9 @@ project:
 
 format:
   html:
+    include-in-header:
+      - text: |
+          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     theme: darkly     # dark theme of your choice
     css: styles.css
     toc: true
@@ -13,8 +16,36 @@ website:
   repo-actions: [issue]
   navbar:
     background: primary
+    title: false
     search: true
-  sidebar:
-    style: floating
+    left:
+      - text: "Resume"
+        href: 00_resume.ipynb
+      - text: "Blog"
+        href: https://tripathysagar.github.io/sagaTrip/
+        target: _blank
+      - text: "PMPP Notes"
+        href: https://tripathysagar.github.io/PMPP/
+        target: _blank
+    right:
+      - icon: envelope
+        href: mailto:tripathysagar08@gmail.com
+      - icon: linkedin
+        href: https://linkedin.com/in/sagar-tripathy
+        target: _blank
+      - icon: github
+        href: https://github.com/tripathysagar
+        target: _blank
+      - icon: youtube
+        href: https://www.youtube.com/@SimSagaTrip
+        target: _blank
+      - icon: twitter
+        href: https://x.com/tripathy_sagar0
+        target: _blank
+      - text: "📍 Open to Remote/Relocation"
 
 metadata-files: [nbdev.yml, sidebar.yml]
+
+
+
+
