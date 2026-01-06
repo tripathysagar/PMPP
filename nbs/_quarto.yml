@@ -20,7 +20,7 @@ website:
     search: true
     left:
       - text: "Resume"
-        href: 00_resume.ipynb
+        href: https://tripathysagar.github.io/resume.html
       - text: "Blog"
         href: https://tripathysagar.github.io/sagaTrip/
         target: _blank
