@@ -21,6 +21,7 @@ website:
     left:
       - text: "Resume"
         href: https://tripathysagar.github.io/resume.html
+        target: _blank
       - text: "Blog"
         href: https://tripathysagar.github.io/sagaTrip/
         target: _blank
