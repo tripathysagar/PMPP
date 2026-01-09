@@ -59,10 +59,9 @@ def dim(base:float, th:float):
 # %% ../nbs/00_NumbaSimSetup.ipynb 26
 import time
 from functools import wraps
-
+from numba import cuda
 
 def perf(warmup=2, iters=20):
-    from numba import cuda
     def decorator(fn):
         @wraps(fn)
         def wrapper(*args, **kwargs):
