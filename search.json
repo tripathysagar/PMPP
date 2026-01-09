@@ -1,0 +1,233 @@
+[
+  {
+    "objectID": "ch2.html",
+    "href": "ch2.html",
+    "title": "Ch2 : 1D vector addition",
+    "section": "",
+    "text": "📅 09/12/2025\nAllocate the memory on the CPU.\nimport numpy as np\nfrom numba import cuda\n\nN = 10_000\na, b = np.random.randn(N), np.random.randn(N)\na.shape, b.shape\n\n((10000,), (10000,))",
+    "crumbs": [
+      "Resume",
+      "Ch2 : 1D vector addition"
+    ]
+  },
+  {
+    "objectID": "ch2.html#conclusion",
+    "href": "ch2.html#conclusion",
+    "title": "Ch2 : 1D vector addition",
+    "section": "Conclusion",
+    "text": "Conclusion\n\nNote: If you are running in the CPU the code will not be faster due to simulation.\nWe have been able the converted the sequential loop to a parallel one to leverage GPU multithreads.",
+    "crumbs": [
+      "Resume",
+      "Ch2 : 1D vector addition"
+    ]
+  },
+  {
+    "objectID": "ch3.html",
+    "href": "ch3.html",
+    "title": "Ch3 : Mapping Threads to Multidimensional Data",
+    "section": "",
+    "text": "📅 09/01/2026\nCUDA threads are organized in a two level hierarchy\nBoth grids and blocks can be 3D arrays (with x, y, z dimensions). You specify these dimensions when launching a kernel. These variables can be wrapped in dim3 type. As the no of threads inside a block should not exceed 1024, we have to obey the constrain blockDim.x * blockDim.y * blockDim.z ≤ 1024. The ordering of the attributes in the dim3 object is lowest dim first i.e. (x, y, z). Note: diagrams often label dimensions in reverse order (z, y, x).\nThe built-in variables are:\nEach have 3D attributes.\nImportant limits: - Max 1024 threads per block (total across all dimensions) - gridDim.x can go up to 2³¹-1 - gridDim.y and gridDim.z can go up to 65,535 - Index ranges: blockIdx.x ranges from 0 to gridDim.x - 1. Same pattern for y and z\nThe data itself is ordered in row-major order in the memory( C/C++/Python use row-major). This affects how threads are allocated and how we access them. 2D arrays are “flattened” to 1D in memory. This abstraction is substituted with simple indexing. Index in the 1D space can be found out by following formula : index = row * width + col. Where row and col are the global coordinates of the thread in the 2D data space.\nWhen doing operation in 2D or 3D space in GPU, the above constraint comes into play. If the 2D array size is smaller respective to the assigned space inside the GPU there would be many extra threads at the end. Below formula is used to allocate the grid size:\nOne has to build proper boundary condition to prevent invalid threads from accessing out-of-bounds memory. The boundary check pattern:\n!wget -q https://upload.wikimedia.org/wikipedia/commons/3/3b/BlkStdSchnauzer2.jpg -O dog.jpg\n!file dog.jpg\n\ndog.jpg: JPEG image data, JFIF standard 1.01, aspect ratio, density 1x1, segment length 16, baseline, precision 8, 477x387, components 3\nfrom PIL import Image\nimg = Image.open('dog.jpg')\nimg.size\n\n(477, 387)\nIn numpy the image is order by height, width then channel.\nW, H = img.size\n#im = img.resize(( W, H))\nim = img\nim\nimn = np.array(im)\nassert imn.shape == (H, W, 3)\nimn.shape, imn.dtype\n\n((387, 477, 3), dtype('uint8'))",
+    "crumbs": [
+      "Resume",
+      "Ch3 : Mapping Threads to Multidimensional Data"
+    ]
+  },
+  {
+    "objectID": "ch3.html#converting-rgb-to-grayscale",
+    "href": "ch3.html#converting-rgb-to-grayscale",
+    "title": "Ch3 : Mapping Threads to Multidimensional Data",
+    "section": "Converting RGB to Grayscale",
+    "text": "Converting RGB to Grayscale\nThe most common formula for converting an RGB pixel to grayscale is a weighted average that accounts for human perception of brightness:\nGray = 0.299 × R + 0.587 × G + 0.114 × B\nThis gives more weight to green (we’re most sensitive to it) and less to blue (least sensitive).\n\nCPU\n\ndef grayscale_cpu(inp, out, height, width):\n    #height, width = inp.shape[:2] this will be additional look up\n\n    for row in range(height):\n        for col in range(width):\n          if row &lt; height and col &lt; width:\n              # do work\n              out[row, col] = 0.21 * inp[row, col, 0] + 0.72 * inp[row, col, 1] +  0.07 * inp[row, col, 2]\n\n\nout_c = np.zeros_like(imn, dtype=np.float32)\nout_c.shape, out_c.dtype\n\n((387, 477, 3), dtype('float32'))\n\n\n\nwith timer():\n  grayscale_cpu(imn, out_c, H, W)\n\n1139.7589 ms\n\n\n\ndef np2im(arr): return Image.fromarray(arr.astype(np.uint8))\nnp2im(out_c)\n\n\n\n\n\n\n\n\n\n\nGPU\nCreating output array in the GPU.\n\nout_d = cuda.device_array((H, W), dtype=np.float32)\nout_d.shape, device(out_d)\n\n((387, 477), 'cuda')\n\n\nMoving image to the GPU.\n\nd_im = cuda.to_device(im)\nd_im.shape, device(d_im)\n\n((387, 477, 3), 'cuda')\n\n\n\nblock_dim = (32, 32)\ngrid_dim = (dim(W, block_dim[0]), dim(H, block_dim[1]))\ngrid_dim\n\n(15, 13)\n\n\n\n@cuda.jit\ndef grayscale_kernel(inp, out, height, width):\n    #height, width = inp.shape[:2] this will be additional look up\n\n    col = cuda.threadIdx.x + cuda.blockIdx.x * cuda.blockDim.x\n    row = cuda.threadIdx.y + cuda.blockIdx.y * cuda.blockDim.y\n\n    if row &lt; height and col &lt; width:\n        # do work\n        out[row, col] = 0.21 * inp[row, col, 0] + 0.72 * inp[row, col, 1] +  0.07 * inp[row, col, 2]\n\n\nwith timer():\n  grayscale_kernel[grid_dim, block_dim](d_im, out_d, H, W)\n\n1283.8546 ms\n\n\n\nout = out_d.copy_to_host()\ndevice(out)\n\n'cpu'\n\n\n\nnp2im(out_c)\n\n\n\n\n\n\n\n\n\nassert test_close(out, out_c[:, :, 0])",
+    "crumbs": [
+      "Resume",
+      "Ch3 : Mapping Threads to Multidimensional Data"
+    ]
+  },
+  {
+    "objectID": "ch3.html#blurr-filter",
+    "href": "ch3.html#blurr-filter",
+    "title": "Ch3 : Mapping Threads to Multidimensional Data",
+    "section": "Blurr Filter",
+    "text": "Blurr Filter\nA blur effect is created by convolving an image with a blur kernel (also called a filter). The basic idea: each pixel becomes an average of itself and its neighbors.\nSimple Box Blur Kernel (3×3):\n1/9 * | 1  1  1 |\n      | 1  1  1 |\n      | 1  1  1 |\nThis averages all 9 pixels in a 3×3 neighborhood equally.\n\nBLUR_SIZE = 3\nks = BLUR_SIZE * 2 + 1\nK = np.ones((ks, ks), dtype=np.float32) / ks ** 2\nK\n\narray([[0.02040816, 0.02040816, 0.02040816, 0.02040816, 0.02040816,\n        0.02040816, 0.02040816],\n       [0.02040816, 0.02040816, 0.02040816, 0.02040816, 0.02040816,\n        0.02040816, 0.02040816],\n       [0.02040816, 0.02040816, 0.02040816, 0.02040816, 0.02040816,\n        0.02040816, 0.02040816],\n       [0.02040816, 0.02040816, 0.02040816, 0.02040816, 0.02040816,\n        0.02040816, 0.02040816],\n       [0.02040816, 0.02040816, 0.02040816, 0.02040816, 0.02040816,\n        0.02040816, 0.02040816],\n       [0.02040816, 0.02040816, 0.02040816, 0.02040816, 0.02040816,\n        0.02040816, 0.02040816],\n       [0.02040816, 0.02040816, 0.02040816, 0.02040816, 0.02040816,\n        0.02040816, 0.02040816]], dtype=float32)\n\n\n\nCPU\n\ndef blurr_cpu(inp, out, K, BLUR_SIZE):\n    height, width = inp.shape[:2]\n\n    for row in range(height):\n        for col in range(width):\n            for i in range(-BLUR_SIZE, BLUR_SIZE + 1):\n                for j in range(-BLUR_SIZE, BLUR_SIZE + 1):\n                    n_row = row + i\n                    n_col = col + j\n                    if 0 &lt;= n_row &lt; height and 0 &lt;= n_col &lt; width:\n                        for k in range(3):\n                            out[row, col, k] += inp[n_row, n_col, k] * K[i + BLUR_SIZE, j + BLUR_SIZE]\n\n\nout_c = np.zeros_like(imn, dtype=np.float32)\n\nwith timer():\n  blurr_cpu(imn, out_c, K, BLUR_SIZE)\n\n24793.1270 ms\n\n\n\nassert out_c.shape == imn.shape\n\n\nnp2im(out_c)\n\n\n\n\n\n\n\n\n\n\nGPU\n\n@cuda.jit\ndef blurr_kernel(inp, out, K, height, width, BLUR_SIZE):\n    #height, width = inp.shape[:2] this will be additional look up\n\n    col = cuda.threadIdx.x + cuda.blockIdx.x * cuda.blockDim.x\n    row = cuda.threadIdx.y + cuda.blockIdx.y * cuda.blockDim.y\n\n    if row &lt; height and col &lt; width:\n        # Initialize the output pixel's color channels to 0.0 before accumulation\n        for k in range(3):\n            out[row, col, k] = 0.0\n\n        # do work\n        for i in range(-BLUR_SIZE, BLUR_SIZE + 1):\n            for j in range(-BLUR_SIZE, BLUR_SIZE + 1):\n                n_row = row + i\n                n_col = col + j\n                if 0 &lt;= n_row &lt; height and 0 &lt;= n_col &lt; width:\n                    for k in range(3):\n                        out[row, col, k] += float(inp[n_row, n_col, k]) * K[i + BLUR_SIZE, j + BLUR_SIZE]\n\n\nout_d = cuda.device_array((H, W, 3), dtype=np.float32)\nout_d.shape, device(out_d)\n\n((387, 477, 3), 'cuda')\n\n\n\nd_K = cuda.to_device(K)\nwith timer():\n  blurr_kernel[grid_dim, block_dim](d_im, out_d, d_K, H, W, BLUR_SIZE)\n\n213.6875 ms\n\n\n\nnp2im(out_d.copy_to_host())\n\n\n\n\n\n\n\n\n\nassert test_close(out_d.copy_to_host(), out_c)",
+    "crumbs": [
+      "Resume",
+      "Ch3 : Mapping Threads to Multidimensional Data"
+    ]
+  },
+  {
+    "objectID": "ch3.html#mat-mul",
+    "href": "ch3.html#mat-mul",
+    "title": "Ch3 : Mapping Threads to Multidimensional Data",
+    "section": "Mat Mul",
+    "text": "Mat Mul\n\nWm, Hm = 120, 140\nWn, Hn = 140, 160\nassert Hm == Wn\n\n\nCPU\n\nM = np.random.randn(Wm, Hm)\nN = np.random.randn(Wn, Hn)\nM.shape, N.shape\n\n((120, 140), (140, 160))\n\n\n\nP1 = np.zeros((Wm, Hn), dtype=M.dtype)\nP1.shape\n\n(120, 160)\n\n\n\ndef seq_mult():\n    for i in range(Wm):\n        for j in range(Hn):\n            temp = 0\n            for k in range(Wn):\n                temp += M[i,k] * N[k,j]\n            P1[i,j] = temp\n\n\nwith timer():\n  seq_mult()\n\n979.2057 ms\n\n\n\n\nGPU\n\n\nM_d = cuda.to_device(M)\nN_d = cuda.to_device(N)\n\nP_d = cuda.to_device(np.zeros((Wm, Hn), dtype=M.dtype))\ndevice(M_d), device(N_d), device(P_d)\n\n('cuda', 'cuda', 'cuda')\n\n\n\n@cuda.jit\ndef matmul_kernel(M, N, P, W1, H2, W2):\n    col = cuda.threadIdx.x + cuda.blockIdx.x * cuda.blockDim.x\n    row = cuda.threadIdx.y + cuda.blockIdx.y * cuda.blockDim.y\n\n    if col &lt; H2 and row &lt; W1:\n        p_val = 0.\n        for i in range(W2):\n            p_val += M[row, i] * N[i, col]\n\n        P[row, col] = p_val\n\n\nwith timer():\n  matmul_kernel[grid_dim, block_dim](M_d, N_d, P_d, Wm, Hn, Wn )\n\n128.3623 ms\n\n\n\nassert test_close(P1, P_d.copy_to_host())",
+    "crumbs": [
+      "Resume",
+      "Ch3 : Mapping Threads to Multidimensional Data"
+    ]
+  },
+  {
+    "objectID": "ch3.html#conclusion",
+    "href": "ch3.html#conclusion",
+    "title": "Ch3 : Mapping Threads to Multidimensional Data",
+    "section": "Conclusion",
+    "text": "Conclusion\n\n\n\nOperation\nCPU Time (ms)\nGPU Time (ms)\n\n\n\n\nGrayscale Conversion\n1139.7589 ms\n1283.8546 ms\n\n\nBlur Filter\n24793.1270 ms\n213.6875 ms\n\n\nMatrix Multiplication\n979.2057 s\n128.3623 ms\n\n\n\nGPU are faster for the problems wrt the CPU in Blur Filter and Matrix Multiplication. But for Grayscale Conversion CPU performs marginally better than GPU.",
+    "crumbs": [
+      "Resume",
+      "Ch3 : Mapping Threads to Multidimensional Data"
+    ]
+  },
+  {
+    "objectID": "ch1.html",
+    "href": "ch1.html",
+    "title": "Ch1 : Introduction",
+    "section": "",
+    "text": "📅 09/12/2025\nModern computer system are build on the CPU which is central to all modern life. It takes in pragram and perform execution sequentially. CPU stopped getting dramatically faster due to power and heat issue. But Moore’s law continues and putting more transistor to the chip i.e. more cores.\nEnters parallelism with GPU, these are multiple small compute units. Where each unit is responsible for a single computation.",
+    "crumbs": [
+      "Resume",
+      "Ch1 : Introduction"
+    ]
+  },
+  {
+    "objectID": "ch1.html#cpu-memory-layout",
+    "href": "ch1.html#cpu-memory-layout",
+    "title": "Ch1 : Introduction",
+    "section": "CPU Memory Layout",
+    "text": "CPU Memory Layout\n\nLarge caches — CPUs have big L1, L2, and L3 caches to hide memory latency\nOptimized for low latency — designed to get one piece of data as fast as possible\nCache-friendly access — works well even with somewhat random access patterns because the cache “saves” recently used data",
+    "crumbs": [
+      "Resume",
+      "Ch1 : Introduction"
+    ]
+  },
+  {
+    "objectID": "ch1.html#gpu-memory-layout",
+    "href": "ch1.html#gpu-memory-layout",
+    "title": "Ch1 : Introduction",
+    "section": "GPU Memory Layout",
+    "text": "GPU Memory Layout\n\nSmall caches per core — each core has much less cache (thousands of cores sharing limited cache)\nOptimized for high throughput — designed to deliver lots of data, not necessarily fast for any single request\nGlobal memory is slow — the main GPU memory (VRAM) has high latency (hundreds of cycles)\nCoalesced access is critical — when adjacent threads access adjacent memory locations, the GPU can combine these into one efficient transaction. Random access patterns kill performance.\nShared memory — a small, fast, programmer-controlled memory shared within a thread block (like a manual cache)\n\nCPUs hide memory latency with big caches. GPUs tolerate memory latency by having thousands of threads — while some threads wait for data, others execute.\nMany problems can benifit from parallelization. But there are many bottleneck one has to be aware of before writing efficient GPU code. 1. Moving data back and forth CPU and GPU is time consuming 1. Amdahl’s Law: not all parts of a program can be parallelized 1. The sequential portion dominates the execution 1. Race conditions : threads accessing same data unpredictably and having invalid data 1. Synchronization overhead : coordinating threads takes time some threads are faster some might be slower 1. Load balancing : all processors should have equal work\n\nAmdahl’s Law\nAmdahl’s Law tells us the maximum speedup achievable by parallelizing a program.\nSpeedup = 1 / ((1 - P) + P / N)\nWhere: - P = fraction of the program that can be parallelized - N = number of processors\nImagine a program that takes 100 seconds on one processor, and 80% can be parallelized (P = 0.8).\n\n\n\nProcessors (N)\nCalculation\nSpeedup\nNew Time\n\n\n\n\n1\n1 / (0.2 + 0.8/1)\n1×\n100s\n\n\n4\n1 / (0.2 + 0.8/4)\n2.5×\n40s\n\n\n16\n1 / (0.2 + 0.8/16)\n4×\n25s\n\n\n100\n1 / (0.2 + 0.8/100)\n~4.8×\n~21s\n\n\n∞\n1 / (0.2 + 0)\n5×\n20s\n\n\n\nEven with infinite processors, the maximum speedup is only 5× because the sequential 20% (20 seconds) can never be parallelized.\nThis is why minimizing sequential code is critical in GPU programming!",
+    "crumbs": [
+      "Resume",
+      "Ch1 : Introduction"
+    ]
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "PMPP Blog",
+    "section": "",
+    "text": "Ch1 : Introduction - GPU programming basics and Amdahl’s Law.\nCh2 : 1D vector addition - Parallelizing 1D vector addition using CUDA.\nCh3 : Mapping Threads to Multidimensional Data - Parallelizing 2D vector addition using CUDA.",
+    "crumbs": [
+      "Resume",
+      "PMPP Blog"
+    ]
+  },
+  {
+    "objectID": "index.html#posts",
+    "href": "index.html#posts",
+    "title": "PMPP Blog",
+    "section": "",
+    "text": "Ch1 : Introduction - GPU programming basics and Amdahl’s Law.\nCh2 : 1D vector addition - Parallelizing 1D vector addition using CUDA.\nCh3 : Mapping Threads to Multidimensional Data - Parallelizing 2D vector addition using CUDA.",
+    "crumbs": [
+      "Resume",
+      "PMPP Blog"
+    ]
+  },
+  {
+    "objectID": "index.html#install",
+    "href": "index.html#install",
+    "title": "PMPP Blog",
+    "section": "Install",
+    "text": "Install\n\ngit clone https://github.com/tripathysagar/PMPP.git\ncd PMPP\npip install -e .",
+    "crumbs": [
+      "Resume",
+      "PMPP Blog"
+    ]
+  },
+  {
+    "objectID": "core.html",
+    "href": "core.html",
+    "title": "Helper for Numba Simulation",
+    "section": "",
+    "text": "source\n\n\n\ndef has_gpu(\n    \n):\n\nCheck if the system has a GPU using subprocess nvidia-smi.\n\nassert not has_gpu()",
+    "crumbs": [
+      "Resume",
+      "Helper for Numba Simulation"
+    ]
+  },
+  {
+    "objectID": "core.html#check-for-nvidia-smi-avalablity",
+    "href": "core.html#check-for-nvidia-smi-avalablity",
+    "title": "Helper for Numba Simulation",
+    "section": "",
+    "text": "source\n\n\n\ndef has_gpu(\n    \n):\n\nCheck if the system has a GPU using subprocess nvidia-smi.\n\nassert not has_gpu()",
+    "crumbs": [
+      "Resume",
+      "Helper for Numba Simulation"
+    ]
+  },
+  {
+    "objectID": "core.html#check-for-simulation-flag",
+    "href": "core.html#check-for-simulation-flag",
+    "title": "Helper for Numba Simulation",
+    "section": "Check for simulation Flag",
+    "text": "Check for simulation Flag\n\nsource\n\nis_sim\n\ndef is_sim(\n    \n):\n\nCheck if we’re running in a simulator by checking the NUMBA_ENABLE_CUDASIM environment variable\n\nassert not is_sim()",
+    "crumbs": [
+      "Resume",
+      "Helper for Numba Simulation"
+    ]
+  },
+  {
+    "objectID": "core.html#set-sim",
+    "href": "core.html#set-sim",
+    "title": "Helper for Numba Simulation",
+    "section": "Set sim",
+    "text": "Set sim\nit have to be called befor importing the cuda\n\nsource\n\nset_sim\n\ndef set_sim(\n    \n):\n\nSeting up Numba CUDA simulator\n\nset_sim()\nassert is_sim()",
+    "crumbs": [
+      "Resume",
+      "Helper for Numba Simulation"
+    ]
+  },
+  {
+    "objectID": "core.html#check-if-the-cuda-is-available-or-not",
+    "href": "core.html#check-if-the-cuda-is-available-or-not",
+    "title": "Helper for Numba Simulation",
+    "section": "check if the cuda is available or not",
+    "text": "check if the cuda is available or not",
+    "crumbs": [
+      "Resume",
+      "Helper for Numba Simulation"
+    ]
+  },
+  {
+    "objectID": "core.html#setup-numbasim",
+    "href": "core.html#setup-numbasim",
+    "title": "Helper for Numba Simulation",
+    "section": "Setup NumbaSim",
+    "text": "Setup NumbaSim\n\ncheck if nvdia-smi available\nif not init the simulator\nif yes, check if cuda is available\n\nin the case 2, if we do not set the flag prior to importing numba it will throw an error",
+    "crumbs": [
+      "Resume",
+      "Helper for Numba Simulation"
+    ]
+  },
+  {
+    "objectID": "core.html#device-api-mimics-torch.device",
+    "href": "core.html#device-api-mimics-torch.device",
+    "title": "Helper for Numba Simulation",
+    "section": "device api mimics torch.device",
+    "text": "device api mimics torch.device\n\nd = cuda.device_array(1)\ntype(d)\n\nnumba.cuda.simulator.cudadrv.devicearray.FakeCUDAArray\n\n\nFor a tensor d which is allocated in CUDA\nisinstance(d, cuda.cudadrv.devicearray.DeviceNDArray)\nSo we are going to use copy_to_host for checking is the tensor is already present in the device and can be moved to host.\n\nsource\n\ndevice\n\ndef device(\n    x\n):\n\n\nassert device(d) == 'cuda'\nassert device(d.copy_to_host()) == 'cpu'\n\n\nsource\n\n\ntest_close\n\ndef test_close(\n    a, b, tol:float=0.0001\n):\n\n\na = np.array([1.0, 2.0, 3.0], dtype=np.float32)\nb = np.array([1.0001, 2.0001, 3.0001], dtype=np.float32)\nassert test_close(a, b, tol=1e-4)\n\n\nsource\n\n\ndim\n\ndef dim(\n    base:float, th:float\n):\n\n\nassert dim(8, 5) == 2\nassert dim(8, 8) == 1",
+    "crumbs": [
+      "Resume",
+      "Helper for Numba Simulation"
+    ]
+  },
+  {
+    "objectID": "core.html#performace-capture",
+    "href": "core.html#performace-capture",
+    "title": "Helper for Numba Simulation",
+    "section": "Performace Capture",
+    "text": "Performace Capture\n\nsource\n\ntimer\n\ndef timer(\n    \n):\n\n\n\nCPU-only setup for Numba CUDA simulator\n\nwith timer():\n    time.sleep(0.01)  # 10ms sleep\n\n10.1534 ms\n\n\n\n\nNumbaSim Setup\n\n@cuda.jit\ndef add_kernel(a, b, c):\n    idx = cuda.grid(1)\n    if idx &lt; a.size:\n        c[idx] = a[idx] + b[idx]\n\n# Test data\nN = 1\na = cuda.to_device(np.ones(N, dtype=np.float32))\nb = cuda.to_device(np.ones(N, dtype=np.float32))\nc = cuda.device_array(N, dtype=np.float32)\n\nwith timer():\n    add_kernel[1, 1](a, b, c)\n\n11.5806 ms",
+    "crumbs": [
+      "Resume",
+      "Helper for Numba Simulation"
+    ]
+  }
+]
