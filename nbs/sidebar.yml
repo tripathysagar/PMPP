@@ -2,7 +2,7 @@ website:
   sidebar:
     contents:
       - index.ipynb
-      - 00_NumbaSimSetup.ipynb
+      - 00_core.ipynb
       - 01_ch1.ipynb
       - 02_ch2.ipynb
       - 03_ch3.ipynb
