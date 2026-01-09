@@ -26,8 +26,7 @@ website:
         href: https://tripathysagar.github.io/sagaTrip/
         target: _blank
       - text: "PMPP Notes"
-        href: https://tripathysagar.github.io/PMPP/
-        target: _blank
+        href: index.ipynb
     right:
       - icon: envelope
         href: mailto:tripathysagar08@gmail.com
