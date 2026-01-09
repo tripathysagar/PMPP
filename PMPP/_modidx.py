@@ -11,5 +11,4 @@ d = { 'settings': { 'branch': 'main',
                                     'PMPP.NumbaSimSetup.is_sim': ('numbasimsetup.html#is_sim', 'PMPP/NumbaSimSetup.py'),
                                     'PMPP.NumbaSimSetup.perf': ('numbasimsetup.html#perf', 'PMPP/NumbaSimSetup.py'),
                                     'PMPP.NumbaSimSetup.set_sim': ('numbasimsetup.html#set_sim', 'PMPP/NumbaSimSetup.py'),
-                                    'PMPP.NumbaSimSetup.test_close': ('numbasimsetup.html#test_close', 'PMPP/NumbaSimSetup.py')},
-            'PMPP.core': {'PMPP.core.foo': ('core.html#foo', 'PMPP/core.py')}}}
+                                    'PMPP.NumbaSimSetup.test_close': ('numbasimsetup.html#test_close', 'PMPP/NumbaSimSetup.py')}}}
